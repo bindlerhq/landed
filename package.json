@@ -1,0 +1,14 @@
+{
+  "name": "landed",
+  "version": "1.0.0",
+  "description": "Price the border before an agent pays: CBAM, customs duty relief, import VAT and EU AI Act obligations as itemised PayPal order lines, each carrying the instrument it comes from.",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "landed-mcp": "./src/mcp.js" },
+  "scripts": {
+    "test": "node test/verify.js",
+    "mcp": "node src/mcp.js",
+    "demo": "node src/server.js"
+  },
+  "engines": { "node": ">=18" }
+}

@@ -1,0 +1,123 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Landed</title>
+<style>
+:root{--ink:#14171a;--mute:#5d6671;--line:#e2e6ea;--bg:#f7f8f9;--card:#fff;--acc:#0b5c3f;--warn:#8a5a00;--warnbg:#fff8e6;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 64px}
+h1{font-size:30px;margin:0 0 6px;letter-spacing:-.02em}
+.sub{color:var(--mute);margin:0 0 28px;max-width:62ch}
+.grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
+.grid>*{min-width:0}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:12px 0 4px}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff}
+button{margin-top:18px;width:100%;padding:11px;background:var(--acc);color:#fff;border:0;border-radius:6px;font:inherit;font-weight:600;cursor:pointer}
+button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);font-weight:500;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}
+td.n{text-align:right;white-space:nowrap}
+tr.total td{font-weight:700;border-bottom:0;border-top:2px solid var(--ink)}
+.cite{display:block;color:var(--mute);font-size:12px;margin-top:3px;max-width:60ch}
+.unres{background:var(--warnbg)}
+.unres td.n{color:var(--warn);font-weight:600}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.ok{background:#e7f4ee;color:var(--acc)}
+.no{background:var(--warnbg);color:var(--warn)}
+.uplift{font-size:13px;color:var(--mute);margin:10px 0 0}
+pre{background:#14171a;color:#e6edf3;padding:14px;border-radius:8px;overflow-x:auto;font:12px/1.5 var(--mono);margin:14px 0 0}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);margin:26px 0 10px}
+details{margin-top:14px}summary{cursor:pointer;font-size:13px;color:var(--mute)}
+</style>
+<div class="wrap">
+<h1>Landed</h1>
+<p class="sub">An AI agent quotes the price on the page. For a cross-border order that is not the price that lands. This prices the border, cites the instrument behind every line, and refuses to guess the ones it cannot derive.</p>
+
+<div class="grid">
+<form class="card" id="f">
+  <label>Goods</label><input name="description" value="Hot-rolled coil">
+  <label>CBAM sector</label>
+  <select name="cbam_sector">
+    <option>Iron and steel</option><option>Cement</option><option>Fertilisers</option>
+    <option>Aluminium</option><option>Hydrogen</option><option>Electricity</option>
+    <option value="">Not an Annex I good</option>
+  </select>
+  <label>CN code</label><input name="cn_code" value="7208">
+  <label>Origin</label><input name="origin_country" value="IN">
+  <label>Tonnes</label><input name="tonnes" type="number" step="any" value="60">
+  <label>Embedded tCO2e per tonne</label><input name="embedded_tco2e_per_tonne" type="number" step="any" value="1.9">
+  <label>Origin carbon price, EUR/t</label><input name="origin_carbon_price_eur_per_tonne" type="number" step="any" value="0">
+  <label>Year of import</label><input name="year" type="number" value="2026" min="2026" max="2034">
+  <label>CBAM certificate price, EUR</label><input name="certificate_price_eur" type="number" step="any" value="80">
+  <label>Goods value, EUR</label><input name="intrinsic_value_eur" type="number" step="any" value="40000">
+  <label>Freight and insurance, EUR</label><input name="freight_and_insurance_eur" type="number" step="any" value="1200">
+  <label>Destination VAT rate, %</label><input name="destination_vat_rate" type="number" step="any" value="21">
+  <label>Customs duty, EUR (from TARIC)</label><input name="customs_duty_eur" type="number" step="any" value="1000">
+  <button type="submit">Price the border</button>
+  <button type="button" class="ghost" id="clear">Clear the duty, and watch VAT go unresolved</button>
+</form>
+
+<div>
+  <div class="card" id="out">Pricing…</div>
+  <h2>The PayPal order this creates</h2>
+  <pre id="pp">…</pre>
+  <details><summary>Why unresolved and not estimated</summary>
+  <p class="sub" style="margin-top:10px">Customs duty sits inside the taxable amount for import VAT. If the duty is unknown, any VAT figure is understated by the duty times the rate. An agent can act on "I need this one input". It cannot act on a confident wrong number, and it will not find out it was wrong until the goods are at the border. So the line comes back null with what it needs, the quote reports itself incomplete, and the PayPal order leaves those lines out of the amount charged rather than estimating them into it.</p>
+  </details>
+</div>
+</div>
+</div>
+<script>
+const f = document.getElementById("f"), out = document.getElementById("out"), pp = document.getElementById("pp");
+const eur = n => n === null || n === undefined ? "" : "EUR " + Number(n).toLocaleString("en-GB", {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function orderFromForm(){
+  const d = Object.fromEntries(new FormData(f));
+  const num = k => d[k] === "" || d[k] === undefined ? undefined : Number(d[k]);
+  const o = {
+    destination_region: "EU", origin_country: d.origin_country, description: d.description,
+    year: num("year"), certificate_price_eur: num("certificate_price_eur"),
+    intrinsic_value_eur: num("intrinsic_value_eur"),
+    freight_and_insurance_eur: num("freight_and_insurance_eur"),
+    destination_vat_rate: num("destination_vat_rate"),
+    goods: { cn_code: d.cn_code, tonnes: num("tonnes"),
+      embedded_tco2e_per_tonne: num("embedded_tco2e_per_tonne"),
+      origin_carbon_price_eur_per_tonne: num("origin_carbon_price_eur_per_tonne") }
+  };
+  if (d.cbam_sector) o.goods.cbam_sector = d.cbam_sector;
+  if (num("customs_duty_eur") !== undefined) o.customs_duty_eur = num("customs_duty_eur");
+  return o;
+}
+
+async function go(e){
+  if (e) e.preventDefault();
+  const order = orderFromForm();
+  let r;
+  try { r = await (await fetch("/api/quote", {method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify(order)})).json(); }
+  catch (err) { out.textContent = String(err); return; }
+  if (r.error) { out.innerHTML = '<span class="badge no">' + r.error + '</span>'; pp.textContent = ""; return; }
+  const q = r.quote;
+  let rows = '<tr><td>' + (order.description || "Goods") + ', quoted on the page<span class="cite">Before the border</span></td><td class="n">' + eur(q.quoted_goods_value_eur) + '</td></tr>';
+  for (const l of q.lines) {
+    const un = typeof l.amount_eur !== "number";
+    rows += '<tr' + (un ? ' class="unres"' : '') + '><td>' + l.label +
+      '<span class="cite">' + (un ? l.unresolved : (l.cites[0] || "")) + '</span>' +
+      (l.threshold_note && !un ? '<span class="cite">' + l.threshold_note + '</span>' : '') +
+      '</td><td class="n">' + (un ? "unresolved" : eur(l.amount_eur)) + '</td></tr>';
+  }
+  rows += '<tr><td>Freight and insurance</td><td class="n">' + eur(order.freight_and_insurance_eur || 0) + '</td></tr>';
+  rows += '<tr class="total"><td>Landed total</td><td class="n">' + eur(q.landed_total_eur) + '</td></tr>';
+  out.innerHTML = '<div><span class="badge ' + (q.complete ? "ok" : "no") + '">' +
+    (q.complete ? "complete: every line derived and cited" : "incomplete: " + q.unresolved.length + " line(s) need an input, and are not estimated") +
+    '</span></div><table><tr><th>Line</th><th style="text-align:right">Amount</th></tr>' + rows + '</table>' +
+    '<p class="uplift">Regulatory cost is ' + eur(q.regulatory_cost_eur) + ', a ' + q.uplift_percent + '% uplift on the price the agent would have quoted.</p>';
+  const pu = r.paypal_order_body.purchase_units[0];
+  pp.textContent = JSON.stringify({ intent: r.paypal_order_body.intent, amount: pu.amount, items: pu.items }, null, 1);
+}
+f.addEventListener("submit", go);
+document.getElementById("clear").addEventListener("click", () => { f.customs_duty_eur.value = ""; go(); });
+go();
+</script>
